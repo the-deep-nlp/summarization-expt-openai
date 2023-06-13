@@ -1,0 +1,15 @@
+version: "3.7"
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: summarizaerapp
+    ports:
+      - "8505:8501"
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    restart: unless-stopped
