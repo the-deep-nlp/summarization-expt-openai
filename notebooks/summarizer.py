@@ -12,8 +12,11 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 
 from langchain.chains.summarize import load_summarize_chain
-
 from langchain.chains import LLMSummarizationCheckerChain
+
+from langchain.embeddings import OpenAIEmbeddings
+
+from utils import get_cosine_similarity
 
 load_dotenv()
 
@@ -33,14 +36,15 @@ class Summarization:
         self,
         temperature=0.1,
         max_tokens=512,
-        model_name="text-davinci-003" # gpt-3.5-turbo
+        model_name="text-davinci-003"
     ):
         self.llm = OpenAI(
             temperature=temperature,
             model=model_name,
              max_tokens=max_tokens,
         )
-    
+        self.embedding_model = OpenAIEmbeddings()
+
     def textsplitter(self):
         """ Text Splitter """
         return RecursiveCharacterTextSplitter(
@@ -48,20 +52,20 @@ class Summarization:
             chunk_overlap=50,
             separators=["\n\n", "\n", "\t"]
         )
-    
+
     def load_data(self, filename):
         """ Load file from disk """
         with open(filename) as f:
             texts = f.read()
         return texts
-    
+
     def create_docs(self, texts):
         """ Create Docs """
         text_splitter = self.textsplitter()
         texts = text_splitter.split_text(texts)
         docs = [Document(page_content=t) for t in texts]
         return docs
-    
+
     def generate_prompt(self):
         """ Generate Prompts """
         prompt_template = """You are a humanitarian analyst and has a strong domain knowledge. 
@@ -160,3 +164,9 @@ class Summarization:
         scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True)
         scores = scorer.score(original_summary, model_summary)
         return scores
+
+    def calc_similarity(self, row):
+        """ Calculates the cosine similarity """
+        emb_original_summary = self.embedding_model.embed_query(row["original_summary"])
+        emb_generated_summary = self.embedding_model.embed_query(row["generated_summary_B"])
+        return get_cosine_similarity(emb_original_summary, emb_generated_summary)
